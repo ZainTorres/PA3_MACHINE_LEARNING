@@ -101,7 +101,7 @@ with st.sidebar:
             st.success(f"✅ {len(df)} artículos cargados")
     else:
         url = st.text_input("URL GitHub del CSV:",
-            placeholder="https://github.com/usuario/repo/blob/main/scopus_data.csv")
+            placeholder="https://github.com/ZainTorres/PA3_MACHINE_LEARNING/blob/main/KevinZainTorresPA3.ipynb")
         if url:
             try:
                 df = load_github(url)
