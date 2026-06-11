@@ -28,6 +28,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ── URL FIJA DEL CSV EN GITHUB ──
+GITHUB_CSV_URL = "https://raw.githubusercontent.com/ZainTorres/PA3_MACHINE_LEARNING/main/scopus_data.csv"
 
 # ── FUNCIONES ──
 @st.cache_data
@@ -42,8 +44,7 @@ def load_csv(file):
 
 @st.cache_data
 def load_github(url):
-    raw = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
-    df = pd.read_csv(raw)
+    df = pd.read_csv(url)
     df.columns = df.columns.str.strip()
     if "Year" in df.columns:
         df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
@@ -68,7 +69,7 @@ def top_keywords(df, n=20):
     c = Counter(all_k)
     return pd.DataFrame(c.most_common(n), columns=["Keyword", "Frecuencia"])
 
-def freq_abstract(df, n=25):
+def freq_abstract(df, n=20):
     stopwords = {
         "the","a","an","and","or","of","to","in","for","is","are","this","that",
         "with","on","as","by","we","our","be","from","which","at","it","has",
@@ -76,8 +77,8 @@ def freq_abstract(df, n=25):
         "were","was","its","than","more","not","use","used","such","both","each",
         "paper","study","proposed","approach","model","system","method","results",
         "data","performance","show","work","two","three","new","high","well",
-        "used","provides","proposed","present","detect","detection","network",
-        "security","learning","machine","deep","intrusion"
+        "provides","present","detect","detection","network","security",
+        "learning","machine","deep","intrusion"
     }
     if "Abstract" not in df.columns:
         return pd.DataFrame()
@@ -90,24 +91,22 @@ def freq_abstract(df, n=25):
 
 # ── SIDEBAR ──
 with st.sidebar:
-    st.markdown("### 📂 Cargar Dataset")
-    source = st.radio("Fuente:", ["📁 Subir CSV local", "🔗 URL de GitHub"])
+    st.markdown("### 📂 Fuente de Datos")
+    source = st.radio("Cargar desde:", ["🔗 GitHub (automático)", "📁 Subir CSV local"])
     df = None
 
-    if source == "📁 Subir CSV local":
+    if source == "🔗 GitHub (automático)":
+        try:
+            df = load_github(GITHUB_CSV_URL)
+            st.success(f"✅ {len(df)} artículos cargados desde GitHub")
+            st.markdown(f"[Ver CSV en GitHub]({GITHUB_CSV_URL})")
+        except Exception as e:
+            st.error(f"❌ Error al cargar: {e}")
+    else:
         up = st.file_uploader("Sube tu scopus_data.csv", type=["csv"])
         if up:
             df = load_csv(up)
             st.success(f"✅ {len(df)} artículos cargados")
-    else:
-        url = st.text_input("URL GitHub del CSV:",
-            placeholder="https://github.com/ZainTorres/PA3_MACHINE_LEARNING/blob/main/KevinZainTorresPA3.ipynb")
-        if url:
-            try:
-                df = load_github(url)
-                st.success(f"✅ {len(df)} artículos desde GitHub")
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
 
     if df is not None and "Year" in df.columns:
         st.markdown("---")
@@ -129,9 +128,8 @@ st.markdown('<div class="subtitle">Dashboard bibliométrico interactivo · Ingen
 if df is None:
     st.markdown("""
     <div class="info-box">
-    <b>👈 Para comenzar:</b> Carga tu archivo <code>scopus_data.csv</code> desde el panel lateral.<br><br>
-    El archivo debe ser exportado directamente desde <b>Scopus</b> incluyendo las columnas:<br>
-    <code>Authors · Title · Year · Source title · Cited by · Abstract · Author Keywords · DOI</code>
+    <b>👈 Selecciona "GitHub (automático)"</b> en el panel lateral para cargar los datos directamente.<br><br>
+    O sube tu archivo <code>scopus_data.csv</code> manualmente.
     </div>
     """, unsafe_allow_html=True)
     st.stop()
@@ -169,10 +167,9 @@ with col2:
         journals = df["Source title"].value_counts().reset_index()
         journals.columns = ["Revista", "Artículos"]
         fig2 = px.pie(journals.head(6), names="Revista", values="Artículos", hole=0.4)
-        fig2.update_traces(textposition="inside", textinfo="percent+label",
-                           textfont_size=10)
-        fig2.update_layout(paper_bgcolor="rgba(0,0,0,0)",
-                           showlegend=False, margin=dict(t=10,b=10))
+        fig2.update_traces(textposition="inside", textinfo="percent+label", textfont_size=10)
+        fig2.update_layout(paper_bgcolor="rgba(0,0,0,0)", showlegend=False,
+                           margin=dict(t=10,b=10))
         st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
@@ -211,7 +208,7 @@ with col4:
 st.markdown("---")
 
 
-# ── FILA 3: Keywords treemap + Frecuencia abstracts ──
+# ── FILA 3: Keywords + Abstracts ──
 col5, col6 = st.columns(2)
 
 with col5:
@@ -244,7 +241,6 @@ st.markdown("---")
 with st.expander("🗂️ Ver tabla completa del dataset"):
     cols = [c for c in ["Title","Authors","Year","Source title","Cited by","Author Keywords","DOI"] if c in df.columns]
     st.dataframe(df[cols].reset_index(drop=True), use_container_width=True)
-
     csv_export = df[cols].to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Descargar CSV filtrado", csv_export, "scopus_filtrado.csv", "text/csv")
 
